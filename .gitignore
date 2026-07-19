@@ -14,8 +14,6 @@ ENV/
 *.swo
 
 .env
-.env.*
-*.env
 secrets.json
 credentials.json
 
