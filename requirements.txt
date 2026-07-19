@@ -22,4 +22,5 @@ pillow==12.2.0
 matplotlib==3.10.8
 mediapipe==0.10.35
 requests==2.33.1
+python-dotenv==1.2.2
 gunicorn
