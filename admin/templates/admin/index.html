@@ -1,0 +1,30 @@
+{% extends 'admin/master.html' %}
+{% block body %}
+{{ super() }}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-10 col-sm-offset-1">
+            <h1>Admin Panel - HairWeGo</h1>
+            <p class="lead">
+                Selamat datang, <strong>{{ current_user.username }}</strong>!
+                <span class="badge badge-{{ 'danger' if current_user.role.value == 'superadmin' else 'primary' }}">
+                    {{ current_user.role.value }}
+                </span>
+            </p>
+            <p>
+                Panel admin untuk mengelola data aplikasi HairWeGo.
+            </p>
+            <div style="margin-top: 20px;">
+                {% if current_user.role.value == 'superadmin' %}
+                <a class="btn btn-success" href="{{ url_for('admin_auth.register') }}">
+                    <i class="glyphicon glyphicon-plus"></i> Register Admin Baru
+                </a>
+                {% endif %}
+                <a class="btn btn-outline-secondary" href="{{ url_for('admin_auth.logout') }}">
+                    <i class="glyphicon glyphicon-log-out"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock body %}
