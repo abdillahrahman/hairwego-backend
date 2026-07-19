@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, redirect, url_for
 from jinja2 import StrictUndefined
 from flask_cors import CORS
 
@@ -34,6 +34,10 @@ def create_app():
 
     app.jinja_env.undefined = StrictUndefined
     
+    @app.route('/')
+    def index():
+        return redirect(url_for('admin_auth.login'))
+        
     return app
 
 
