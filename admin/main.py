@@ -10,6 +10,8 @@ from flask_admin.form import FileUploadField
 from flask import Blueprint, current_app
 import os
 
+from admin.custom_fields import CropperImageField
+
 from admin import db
 from models import (
     User,
@@ -156,6 +158,20 @@ class UserRecommendationHistoryAdmin(AuthenticatedModelView):
     }
 
 
+def haircut_namegen(obj, filename):
+    import werkzeug.utils
+    import os
+    import uuid
+    ext = os.path.splitext(filename)[1] if filename else '.jpg'
+    
+    if hasattr(obj, 'haircut_name') and obj.haircut_name:
+        # Use the inputted haircut name (converted to lowercase safe format)
+        safe_name = werkzeug.utils.secure_filename(obj.haircut_name.lower())
+        return f"{safe_name}{ext}"
+    else:
+        return f"haircut_{uuid.uuid4().hex[:8]}{ext}"
+
+
 # Customized Haircut model admin
 class HaircutAdmin(AuthenticatedModelView):
     column_list = ["haircut_name", "description", "image_path"]
@@ -167,11 +183,11 @@ class HaircutAdmin(AuthenticatedModelView):
 
     # 📤 Upload field
     form_extra_fields = {
-        'image_path': FileUploadField(
+        'image_path': CropperImageField(
             'Image',
             base_path=file_path,
-            relative_path='static/uploads/',  
-            allow_overwrite=True
+            relative_path='static/uploads/',
+            namegen=haircut_namegen
         )
     }
 
