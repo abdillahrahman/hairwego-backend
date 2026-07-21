@@ -33,6 +33,13 @@ def create_app():
     init_api(app)
 
     app.jinja_env.undefined = StrictUndefined
+
+    import jinja2
+    admin_template_path = os.path.join(os.path.dirname(__file__), 'admin', 'templates')
+    app.jinja_loader = jinja2.ChoiceLoader([
+        jinja2.FileSystemLoader(admin_template_path),
+        app.jinja_loader,
+    ])
     
     @app.route('/')
     def index():
