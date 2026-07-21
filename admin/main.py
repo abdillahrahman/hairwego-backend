@@ -21,6 +21,7 @@ from models import (
     HairType,
     HaircutRecommendation,
     UserRecommendationHistory,
+    TryOnHistory,
     AdminUser,
     AdminRole,
 )
@@ -55,6 +56,65 @@ class AuthenticatedAdminIndexView(AdminIndexView):
     def index(self):
         if not current_user.is_authenticated:
             return redirect(url_for("admin_auth.login"))
+
+        from sqlalchemy import func
+        import arrow
+
+        # --- Statistics ---
+        stats = {
+            "total_users": User.query.count(),
+            "total_haircuts": Haircut.query.count(),
+            "total_scans": ScanResult.query.count(),
+            "total_tryons": TryOnHistory.query.count(),
+            "total_recommendations": HaircutRecommendation.query.count(),
+            "total_face_shapes": FaceShape.query.count(),
+            "total_hair_types": HairType.query.count(),
+        }
+
+        # --- Recent scans (last 5) ---
+        recent_scans = (
+            ScanResult.query
+            .order_by(ScanResult.scan_date.desc())
+            .limit(5)
+            .all()
+        )
+
+        # --- Recent try-ons (last 5) ---
+        recent_tryons = (
+            TryOnHistory.query
+            .order_by(TryOnHistory.created_at.desc())
+            .limit(5)
+            .all()
+        )
+
+        # --- Face shape distribution ---
+        face_shape_dist = (
+            db.session.query(
+                FaceShape.shape_name,
+                func.count(ScanResult.id)
+            )
+            .join(ScanResult, ScanResult.face_shape_id == FaceShape.id)
+            .group_by(FaceShape.shape_name)
+            .all()
+        )
+
+        # --- Hair type distribution ---
+        hair_type_dist = (
+            db.session.query(
+                HairType.type_name,
+                func.count(ScanResult.id)
+            )
+            .join(ScanResult, ScanResult.hair_type_id == HairType.id)
+            .group_by(HairType.type_name)
+            .all()
+        )
+
+        self._template_args["stats"] = stats
+        self._template_args["recent_scans"] = recent_scans
+        self._template_args["recent_tryons"] = recent_tryons
+        self._template_args["face_shape_dist"] = face_shape_dist
+        self._template_args["hair_type_dist"] = hair_type_dist
+
         return super().index()
 
 
@@ -268,6 +328,37 @@ class HaircutAdmin(AuthenticatedModelView):
         return f"<HaircutAdmin(haircut_name={self.haircut_name})>"
 
 
+# TryOn History admin
+class TryOnHistoryAdmin(AuthenticatedModelView):
+    column_list = ["id", "user", "haircut", "result_image", "created_at"]
+    form_columns = ["user", "scan_result", "haircut", "result_image_path"]
+    column_searchable_list = ["user.username", "haircut.haircut_name"]
+    can_create = False
+    can_edit = False
+    column_labels = {
+        "result_image": "Result Image",
+    }
+
+    def _format_user(view, context, model, name):
+        return model.user.username if model.user else "N/A"
+
+    def _format_haircut(view, context, model, name):
+        return model.haircut.haircut_name if model.haircut else "N/A"
+
+    def _format_result_image(view, context, model, name):
+        if model.result_image_path:
+            filename = model.result_image_path.replace('static/', '')
+            image_url = url_for('static', filename=filename)
+            return Markup(f'<img src="{image_url}" style="max-height: 100px;">')
+        return ""
+
+    column_formatters = {
+        "user": _format_user,
+        "haircut": _format_haircut,
+        "result_image": _format_result_image,
+    }
+
+
 # Admin User management (superadmin only)
 class AdminUserAdmin(SuperAdminModelView):
     column_list = ["username", "email", "role", "is_active", "created_at"]
@@ -300,6 +391,7 @@ admin_site.add_view(ScanResultAdmin(ScanResult, db.session))
 admin_site.add_view(
     UserRecommendationHistoryAdmin(UserRecommendationHistory, db.session)
 )
+admin_site.add_view(TryOnHistoryAdmin(TryOnHistory, db.session, name="TryOn History", endpoint="tryon_history"))
 admin_site.add_view(AdminUserAdmin(AdminUser, db.session, name="Admin Users", endpoint="admin_users"))
 
 
@@ -309,7 +401,7 @@ class LogoutMenuLink(MenuLink):
         return current_user.is_authenticated
 
 
-admin_site.add_link(LogoutMenuLink(name="🚪 Logout", url="/admin/logout"))
+admin_site.add_link(LogoutMenuLink(name="Logout", url="/admin/logout"))
 
 admin_bp = Blueprint("admin_bp", __name__)
 

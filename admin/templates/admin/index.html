@@ -1,30 +1,276 @@
 {% extends 'admin/master.html' %}
 {% block body %}
 {{ super() }}
-<div class="container">
-    <div class="row">
-        <div class="col-sm-10 col-sm-offset-1">
-            <h1>Admin Panel - HairWeGo</h1>
-            <p class="lead">
-                Selamat datang, <strong>{{ current_user.username }}</strong>!
-                <span class="badge badge-{{ 'danger' if current_user.role.value == 'superadmin' else 'primary' }}">
-                    {{ current_user.role.value }}
-                </span>
-            </p>
-            <p>
-                Panel admin untuk mengelola data aplikasi HairWeGo.
-            </p>
-            <div style="margin-top: 20px;">
-                {% if current_user.role.value == 'superadmin' %}
-                <a class="btn btn-success" href="{{ url_for('admin_auth.register') }}">
-                    <i class="glyphicon glyphicon-plus"></i> Register Admin Baru
-                </a>
-                {% endif %}
-                <a class="btn btn-outline-secondary" href="{{ url_for('admin_auth.logout') }}">
-                    <i class="glyphicon glyphicon-log-out"></i> Logout
-                </a>
+
+<style>
+    .dashboard-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+        overflow: hidden;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+    .stat-card {
+        padding: 24px;
+        text-align: center;
+        color: #fff;
+    }
+    .stat-card .stat-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .stat-card .stat-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 8px;
+        opacity: 0.9;
+    }
+    .stat-card .stat-icon {
+        font-size: 2rem;
+        opacity: 0.3;
+        position: absolute;
+        top: 16px;
+        right: 20px;
+    }
+    .bg-gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-gradient-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-gradient-warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .bg-gradient-info    { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .bg-gradient-danger  { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #667eea;
+        display: inline-block;
+    }
+    .table-dashboard {
+        font-size: 0.9rem;
+    }
+    .table-dashboard th {
+        border-top: none;
+        font-weight: 600;
+        color: #555;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+    .welcome-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 28px;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    }
+    .welcome-section h1 {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .welcome-section .lead {
+        opacity: 0.9;
+    }
+    .dist-bar {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .dist-bar .dist-label {
+        width: 110px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: #444;
+        text-transform: capitalize;
+    }
+    .dist-bar .dist-fill {
+        height: 24px;
+        border-radius: 12px;
+        min-width: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transition: width 0.6s ease;
+    }
+</style>
+
+<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="dashboard-card">
+                <div class="stat-card bg-gradient-primary position-relative">
+                    <div class="stat-number">{{ stats.total_users }}</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="dashboard-card">
+                <div class="stat-card bg-gradient-success position-relative">
+                    <div class="stat-number">{{ stats.total_scans }}</div>
+                    <div class="stat-label">Total Scans</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="dashboard-card">
+                <div class="stat-card bg-gradient-warning position-relative">
+                    <div class="stat-number">{{ stats.total_haircuts }}</div>
+                    <div class="stat-label">Haircut Models</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="dashboard-card">
+                <div class="stat-card bg-gradient-info position-relative">
+                    <div class="stat-number">{{ stats.total_tryons }}</div>
+                    <div class="stat-label">Try-On Sessions</div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Secondary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card p-3 text-center">
+                <div style="font-size: 1.8rem; font-weight: 700; color: #667eea;">{{ stats.total_recommendations }}</div>
+                <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Recommendation Rules</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card p-3 text-center">
+                <div style="font-size: 1.8rem; font-weight: 700; color: #11998e;">{{ stats.total_face_shapes }}</div>
+                <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Face Shape Types</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="dashboard-card p-3 text-center">
+                <div style="font-size: 1.8rem; font-weight: 700; color: #f5576c;">{{ stats.total_hair_types }}</div>
+                <div style="font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px;">Hair Types</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribution Charts + Recent Activity -->
+    <div class="row mb-4">
+        <!-- Face Shape Distribution -->
+        <div class="col-md-6 mb-3">
+            <div class="dashboard-card p-4" style="min-height: 220px;">
+                <div class="section-title">Face Shape Distribution</div>
+                {% if face_shape_dist %}
+                    {% set max_count = face_shape_dist | map(attribute=1) | max %}
+                    {% for name, count in face_shape_dist %}
+                    <div class="dist-bar">
+                        <div class="dist-label">{{ name }}</div>
+                        <div class="dist-fill bg-gradient-primary" style="width: {{ (count / max_count * 100) | int }}%;">
+                            {{ count }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">Belum ada data scan.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Hair Type Distribution -->
+        <div class="col-md-6 mb-3">
+            <div class="dashboard-card p-4" style="min-height: 220px;">
+                <div class="section-title">Hair Type Distribution</div>
+                {% if hair_type_dist %}
+                    {% set max_count = hair_type_dist | map(attribute=1) | max %}
+                    {% for name, count in hair_type_dist %}
+                    <div class="dist-bar">
+                        <div class="dist-label">{{ name }}</div>
+                        <div class="dist-fill bg-gradient-success" style="width: {{ (count / max_count * 100) | int }}%;">
+                            {{ count }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">Belum ada data scan.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Tables -->
+    <div class="row">
+        <!-- Recent Scans -->
+        <div class="col-md-6 mb-3">
+            <div class="dashboard-card p-4">
+                <div class="section-title">Scan Terbaru</div>
+                {% if recent_scans %}
+                <table class="table table-dashboard table-sm">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Face Shape</th>
+                            <th>Hair Type</th>
+                            <th>Time Scan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in recent_scans %}
+                        <tr>
+                            <td>{{ scan.user.username if scan.user else 'N/A' }}</td>
+                            <td>{{ scan.face_shape.shape_name if scan.face_shape else '-' }}</td>
+                            <td>{{ scan.hair_type.type_name if scan.hair_type else '-' }}</td>
+                            <td><small class="text-muted">{{ scan.scan_date.humanize() if scan.scan_date else '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">Belum ada data scan.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Try-Ons -->
+        <div class="col-md-6 mb-3">
+            <div class="dashboard-card p-4">
+                <div class="section-title">Try-On Terbaru</div>
+                {% if recent_tryons %}
+                <table class="table table-dashboard table-sm">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Haircut</th>
+                            <th>Time Scan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tryon in recent_tryons %}
+                        <tr>
+                            <td>{{ tryon.user.username if tryon.user else 'N/A' }}</td>
+                            <td>{{ tryon.haircut.haircut_name if tryon.haircut else '-' }}</td>
+                            <td><small class="text-muted">{{ tryon.created_at.humanize() if tryon.created_at else '-' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted">Belum ada data try-on.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
 </div>
+
 {% endblock body %}
