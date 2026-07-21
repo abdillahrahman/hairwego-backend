@@ -76,7 +76,7 @@ class CropperWidget(widgets.FileInput):
 
                     $('#{modal_id}').on('shown.bs.modal', function () {{
                         cropper = new Cropper(cropperImg, {{
-                            aspectRatio: 1, // 1:1 square crop
+                            aspectRatio: NaN, // free crop (no fixed ratio)
                             viewMode: 1,
                         }});
                     }}).on('hidden.bs.modal', function () {{
@@ -89,10 +89,7 @@ class CropperWidget(widgets.FileInput):
 
                     cropBtn.addEventListener("click", function() {{
                         if (!cropper) return;
-                        var canvas = cropper.getCroppedCanvas({{
-                            width: 600,
-                            height: 600
-                        }});
+                        var canvas = cropper.getCroppedCanvas();
                         var base64data = canvas.toDataURL("image/jpeg", 0.9);
                         var origName = document.getElementById("{filename_id}").value;
                         if (origName) {{
@@ -186,6 +183,22 @@ class CropperImageField(fields.StringField):
                 
             full_path = os.path.join(self.base_path, rel_path)
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            # Handle duplicate filenames by appending _1, _2, etc.
+            if os.path.exists(full_path):
+                name_part, ext_part = os.path.splitext(filename)
+                counter = 1
+                while True:
+                    new_filename = f"{name_part}_{counter}{ext_part}"
+                    if self.relative_path.endswith('/'):
+                        rel_path = self.relative_path + new_filename
+                    else:
+                        rel_path = self.relative_path + '/' + new_filename
+                    full_path = os.path.join(self.base_path, rel_path)
+                    if not os.path.exists(full_path):
+                        break
+                    counter += 1
+            
             with open(full_path, "wb") as f:
                 f.write(data)
                 
