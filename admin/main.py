@@ -112,14 +112,50 @@ class ScanResultAdmin(AuthenticatedModelView):
     def __repr__(self):
         return f"<ScanResultAdmin(id={self.id})>"
 
-# Customized HaircutRecommendation model admin
+# Customized HaircutRecommendation model admin (grouped by face_shape + hair_type)
 class HaircutRecommendationAdmin(AuthenticatedModelView):
-    column_list = ["face_shape", "hair_type", "haircut", "id"]
+    column_list = ["face_shape", "hair_type", "haircuts"]
     form_columns = ["face_shape", "hair_type", "haircut"]
     column_searchable_list = ["face_shape.shape_name", "hair_type.type_name"]
+    column_labels = {
+        "haircuts": "Haircuts",
+        "face_shape": "Face Shape",
+        "hair_type": "Hair Type",
+    }
+    # Sort by face_shape then hair_type by default
+    column_default_sort = [("face_shape_id", False), ("hair_type_id", False)]
 
-    def _format_haircut(view, context, model, name):
-        return model.haircut.haircut_name if model.haircut else "N/A"
+    def get_query(self):
+        """Return only distinct face_shape + hair_type combos (one row per group)."""
+        from sqlalchemy import func
+        # Subquery: get the MIN id per (face_shape_id, hair_type_id) group
+        subq = (
+            self.session.query(func.min(HaircutRecommendation.id))
+            .group_by(
+                HaircutRecommendation.face_shape_id,
+                HaircutRecommendation.hair_type_id,
+            )
+        )
+        return super().get_query().filter(HaircutRecommendation.id.in_(subq))
+
+    def get_count_query(self):
+        """Match the count to the grouped query (MySQL compatible)."""
+        from sqlalchemy import func
+        subq = (
+            self.session.query(func.count('*').label('cnt'))
+            .select_from(
+                self.session.query(
+                    HaircutRecommendation.face_shape_id,
+                    HaircutRecommendation.hair_type_id,
+                )
+                .group_by(
+                    HaircutRecommendation.face_shape_id,
+                    HaircutRecommendation.hair_type_id,
+                )
+                .subquery()
+            )
+        )
+        return subq
 
     def _format_face_shape(view, context, model, name):
         return model.face_shape.shape_name if model.face_shape else "N/A"
@@ -127,8 +163,19 @@ class HaircutRecommendationAdmin(AuthenticatedModelView):
     def _format_hair_type(view, context, model, name):
         return model.hair_type.type_name if model.hair_type else "N/A"
 
+    def _format_haircuts(view, context, model, name):
+        """Show all haircuts that share the same face_shape + hair_type."""
+        recs = HaircutRecommendation.query.filter_by(
+            face_shape_id=model.face_shape_id,
+            hair_type_id=model.hair_type_id,
+        ).all()
+        names = [r.haircut.haircut_name for r in recs if r.haircut]
+        if not names:
+            return "N/A"
+        return ", ".join(names)
+
     column_formatters = {
-        "haircut": _format_haircut,
+        "haircuts": _format_haircuts,
         "face_shape": _format_face_shape,
         "hair_type": _format_hair_type,
     }
